@@ -1,33 +1,39 @@
 package main
 
 import (
-	"net/http"
+	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
+	corss "github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 )
 
-func (app *Config) routes() http.Handler {
-	mux := chi.NewRouter()
+type Server struct {
+	router *gin.Engine
+}
 
-	// specify who is allowed to connect
-	mux.Use(cors.Handler(cors.Options{
-		AllowedOrigins: []string{"https://*", "http://*"},
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders: []string{"Link"},
-		AllowCredentials: true,
-		MaxAge: 300,
+// 之後要要反轉注入什麼一次性的 singleton
+func NewServer() *Server {
+	r := gin.New()
+	r.Use(gin.Recovery())
+	s := &Server{
+		router: r,
+	}
+	s.routesV2()
+	return s
+}
+
+// 回傳的 Type 是 *gin.Engine
+func (s *Server) routesV2() {
+
+	s.router.Use(corss.New(corss.Config{
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "authorization", "Referer"},
+		AllowCredentials: false,
+		AllowAllOrigins:  true,
+		MaxAge:           12 * time.Hour, // pre-flight request cache
 	}))
-
-	mux.Use(middleware.Heartbeat("/ping"))
-
-	mux.Post("/", app.Broker)
-
-	mux.Post("/log-grpc", app.LogViaGRPC)
-
-	mux.Post("/handle", app.HandleSubmission)
-
-	return mux
+	s.router.GET("/ping", func(c *gin.Context) {
+		c.String(200, "pong")
+	})
+	s.router.POST("/", s.Broker)
 }

@@ -1,11 +1,8 @@
 package main
 
 import (
-	"authentication/data"
 	"database/sql"
-	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"time"
 
@@ -18,11 +15,6 @@ const webPort = "80"
 
 var counts int64
 
-type Config struct {
-	DB *sql.DB
-	Models data.Models
-}
-
 func main() {
 	log.Println("Starting authentication service")
 
@@ -33,15 +25,9 @@ func main() {
 	}
 
 	// set up config
-	app := Config{
-		DB: conn,
-		Models: data.New(conn),
-	}
 
-	srv := &http.Server{
-		Addr: fmt.Sprintf(":%s", webPort),
-		Handler: app.routes(),
-	}
+	s := NewServer()
+	s.router.Run(webPort)
 
 	err := srv.ListenAndServe()
 	if err != nil {

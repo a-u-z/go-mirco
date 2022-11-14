@@ -1,24 +1,41 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
+type RequestPayload struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
 func (s *Server) Authenticate(c *gin.Context) {
-	var requestPayload struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+	jsonData, err := ioutil.ReadAll(c.Request.Body)
+	if err != nil {
+		log.Printf("here is err:%+v", err)
+		// Handle error
 	}
 
-	// 要放一個 swagger 的 required
-	// if err != nil {
-	// 	c.JSON(http.StatusBadRequest, requestPayload)
+	var requestPayload RequestPayload
+
+	json.Unmarshal(jsonData, &requestPayload)
+	log.Printf("here is requestPayload:%+v", requestPayload)
+
+	// 不知道為何這個會失效
+	// if err := c.ShouldBind(&requestPayload); err != nil {
+	// 	// 錯誤處理
+	// 	log.Printf("here is err:%+v", err)
 	// 	return
 	// }
+
+	log.Printf("here is requestPayload:%+v", requestPayload.Email)
 
 	// validate the user against the database
 	user, err := s.Models.User.GetByEmail(requestPayload.Email)
@@ -26,7 +43,7 @@ func (s *Server) Authenticate(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, errors.New("invalid credentials"))
 		return
 	}
-
+	log.Printf("here is user:%+v", user)
 	valid, err := user.PasswordMatches(requestPayload.Password)
 	if err != nil || !valid {
 		c.JSON(http.StatusBadRequest, errors.New("invalid credentials"))

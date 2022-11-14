@@ -3,40 +3,61 @@ package main
 import (
 	"database/sql"
 	"log"
-	"os"
 	"time"
 
 	_ "github.com/jackc/pgconn"
 	_ "github.com/jackc/pgx/v4"
 	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/lib/pq"
 )
 
-const webPort = "80"
+const webPort = ":80"
 
 var counts int64
 
 func main() {
 	log.Println("Starting authentication service")
 
-	// connect to DB
+	// connect to DB 在 container 裡面用這個
 	conn := connectToDB()
 	if conn == nil {
 		log.Panic("Can't connect to Postgres!")
 	}
 
-	// set up config
+	// // local 用這個
+	// psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+	// 	"password=%s dbname=%s sslmode=disable",
+	// 	host, port, user, password, dbname)
+	// db, err := sql.Open("postgres", psqlInfo)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// defer db.Close()
 
+	// err = db.Ping()
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// // local 用這個
+
+	// set up config
 	s := NewServer()
+	s.DB = conn
+	s.Models = New(db)
+	result, err := s.DB.Exec("select * from users")
+	if err != nil {
+		log.SetFlags(log.Lshortfile | log.LstdFlags)
+		log.Println("err:", err)
+	}
+	log.Printf("here is result:%+v", result)
+
 	s.router.Run(webPort)
 
-	err := srv.ListenAndServe()
-	if err != nil {
-		log.Panic(err)
-	}
 }
 
 func openDB(dsn string) (*sql.DB, error) {
-	db, err := sql.Open("pgx", dsn)
+	var err error
+	db, err = sql.Open("pgx", dsn) // 這邊要用 = 而不是 := 不然會 panic ，不過不知為何，readme 第一篇
 	if err != nil {
 		return nil, err
 	}
@@ -50,8 +71,9 @@ func openDB(dsn string) (*sql.DB, error) {
 }
 
 func connectToDB() *sql.DB {
-	dsn := os.Getenv("DSN")
+	// dsn := os.Getenv("DSN")
 
+	dsn := "host=postgres port=5432 user=postgres password=password dbname=users sslmode=disable timezone=UTC connect_timeout=5"
 	for {
 		connection, err := openDB(dsn)
 		if err != nil {
@@ -59,6 +81,7 @@ func connectToDB() *sql.DB {
 			counts++
 		} else {
 			log.Println("Connected to Postgres!")
+			log.Printf("here is :%+v", connection.Stats())
 			return connection
 		}
 

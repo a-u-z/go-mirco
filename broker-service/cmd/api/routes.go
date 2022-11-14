@@ -36,4 +36,5 @@ func (s *Server) routesV2() {
 		c.String(200, "pong")
 	})
 	s.router.POST("/", s.Broker)
+	s.router.POST("/handle", s.HandleSubmission)
 }

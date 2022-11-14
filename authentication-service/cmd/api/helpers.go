@@ -12,6 +12,7 @@ type jsonResponse struct {
 	Message string `json:"message"`
 	Data    any    `json:"data,omitempty"`
 }
+type Config struct{}
 
 // readJSON tries to read the body of a request and converts it into JSON
 func (app *Config) readJSON(w http.ResponseWriter, r *http.Request, data any) error {

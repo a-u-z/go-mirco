@@ -1,8 +1,8 @@
 package main
 
 import (
-	"authentication/data"
 	"database/sql"
+	"time"
 
 	corss "github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -11,7 +11,7 @@ import (
 type Server struct {
 	router *gin.Engine
 	DB     *sql.DB
-	Models data.Models
+	Models Models
 }
 
 // 之後要要反轉注入什麼一次性的 singleton
@@ -29,15 +29,14 @@ func NewServer() *Server {
 func (s *Server) routesV2() {
 
 	s.router.Use(corss.New(corss.Config{
-		AllowedOrigins:   []string{"https://*", "http://*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: true,
-		MaxAge:           300,
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "authorization", "Referer"},
+		AllowCredentials: false,
+		AllowAllOrigins:  true,
+		MaxAge:           12 * time.Hour, // pre-flight request cache
 	}))
 	s.router.GET("/ping", func(c *gin.Context) {
-		c.String(200, "pong")
+		c.String(200, "authentication pong")
 	})
 	s.router.POST("/authenticate", s.Authenticate)
 }

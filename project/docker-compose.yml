@@ -1,17 +1,50 @@
 version: '3'
 
 services:
+
   broker-service:
-    container_name: "broker"
+    container_name: "broker" # 在 docker 裡面的名字，沒有命名的話，會被 docker 自動取名
     build:
       context: ./../broker-service
-      dockerfile: ./../broker-service/broker-service.dockerfile
     restart: always
     ports:
       - "8080:80"
     volumes:
-      - ./../broker-service:/app/brokerDir # 掛載檔案
-    working_dir: /app/brokerDir/cmd/api # 一進入 container 會在哪個 dir
+      - ./../broker-service:/app # 掛載，左邊為本機，右邊為 container 內部
+    working_dir: /app/cmd/api
     deploy:
       mode: replicated
       replicas: 1
+    command: sh entrypoint.sh # 這是為了要讓程式 hang 住
+
+  authentication-service:
+    container_name: "authentication"
+    build:
+      context: ./../authentication-service
+    restart: always
+    ports:
+      - "8081:80"
+    deploy:
+      mode: replicated
+      replicas: 1
+    environment:
+      DSN: "host=postgres port=5432 user=postgres password=password dbname=users sslmode=disable timezone=UTC connect_timeout=5"
+    volumes:
+      - ./../authentication-service:/app # 掛載，左邊為本機，右邊為 container 內部
+    working_dir: /app/cmd/api
+    command: sh entrypoint.sh # 這是為了要讓程式 hang 住
+
+  postgres:
+    image: 'postgres:14.0'
+    ports:
+      - "5432:5432"
+    restart: always
+    deploy:
+      mode: replicated
+      replicas: 1
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: users
+    volumes: # 將 db-data 裡面的 postgres 的資料，跟容器裡 :後這個路徑理的東西，掛載，就是量子糾纏
+      - ./db-data/postgres/:/var/lib/postgresql/data/

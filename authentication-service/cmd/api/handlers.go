@@ -1,42 +1,52 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
-func (app *Config) Authenticate(w http.ResponseWriter, r *http.Request) {
-	var requestPayload struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+type RequestPayload struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (s *Server) Authenticate(c *gin.Context) {
+	jsonData, err := ioutil.ReadAll(c.Request.Body)
+	if err != nil {
+		log.Printf("here is err:%+v", err)
+		// Handle error
 	}
 
-	err := app.readJSON(w, r, &requestPayload)
-	if err != nil {
-		app.errorJSON(w, err, http.StatusBadRequest)
-		return
-	}
+	var requestPayload RequestPayload
+
+	json.Unmarshal(jsonData, &requestPayload)
+	log.Printf("here is requestPayload:%+v", requestPayload)
+
+	// 不知道為何這個會失效
+	// if err := c.ShouldBind(&requestPayload); err != nil {
+	// 	// 錯誤處理
+	// 	log.Printf("here is err:%+v", err)
+	// 	return
+	// }
+
+	log.Printf("here is requestPayload:%+v", requestPayload.Email)
 
 	// validate the user against the database
-	user, err := app.Models.User.GetByEmail(requestPayload.Email)
+	user, err := s.Models.User.GetByEmail(requestPayload.Email)
 	if err != nil {
-		app.errorJSON(w, errors.New("invalid credentials"), http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, errors.New("invalid credentials"))
 		return
 	}
-
+	log.Printf("here is user:%+v", user)
 	valid, err := user.PasswordMatches(requestPayload.Password)
 	if err != nil || !valid {
-		app.errorJSON(w, errors.New("invalid credentials"), http.StatusBadRequest)
-		return
-	}
-
-	// log authentication
-	err = app.logRequest("authentication", fmt.Sprintf("%s logged in", user.Email))
-	if err != nil {
-		app.errorJSON(w, err)
+		c.JSON(http.StatusBadRequest, errors.New("invalid credentials"))
 		return
 	}
 
@@ -45,32 +55,5 @@ func (app *Config) Authenticate(w http.ResponseWriter, r *http.Request) {
 		Message: fmt.Sprintf("Logged in user %s", user.Email),
 		Data:    user,
 	}
-
-	app.writeJSON(w, http.StatusAccepted, payload)
-}
-
-func (app *Config) logRequest(name, data string) error {
-	var entry struct {
-		Name string `json:"name"`
-		Data string `json:"data"`
-	}
-
-	entry.Name = name
-	entry.Data = data
-
-	jsonData, _ := json.MarshalIndent(entry, "", "\t")
-	logServiceURL := "http://logger-service/log"
-
-	request, err := http.NewRequest("POST", logServiceURL, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return err
-	}
-
-	client := &http.Client{}
-	_, err = client.Do(request)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	c.JSON(http.StatusAccepted, payload)
 }

@@ -8,10 +8,11 @@ import (
 )
 
 type jsonResponse struct {
-	Error bool `json:"error"`
+	Error   bool   `json:"error"`
 	Message string `json:"message"`
-	Data any `json:"data,omitempty"`
+	Data    any    `json:"data,omitempty"`
 }
+type Config struct{}
 
 // readJSON tries to read the body of a request and converts it into JSON
 func (app *Config) readJSON(w http.ResponseWriter, r *http.Request, data any) error {

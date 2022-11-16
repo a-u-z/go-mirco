@@ -24,33 +24,10 @@ func main() {
 		log.Panic("Can't connect to Postgres!")
 	}
 
-	// // local 用這個
-	// psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
-	// 	"password=%s dbname=%s sslmode=disable",
-	// 	host, port, user, password, dbname)
-	// db, err := sql.Open("postgres", psqlInfo)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// defer db.Close()
-
-	// err = db.Ping()
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// // local 用這個
-
 	// set up config
 	s := NewServer()
 	s.DB = conn
 	s.Models = New(db)
-	result, err := s.DB.Exec("select * from users")
-	if err != nil {
-		log.SetFlags(log.Lshortfile | log.LstdFlags)
-		log.Println("err:", err)
-	}
-	log.Printf("here is result:%+v", result)
-
 	s.router.Run(webPort)
 
 }

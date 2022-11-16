@@ -34,7 +34,21 @@ services:
     working_dir: /app/cmd/api
     command: sh entrypoint.sh # 這是為了要讓程式 hang 住
 
+  logger-service:
+    container_name: "logger"
+    build:
+      context: ./../logger-service
+    restart: always
+    deploy:
+      mode: replicated
+      replicas: 1
+    volumes:
+      - ./../logger-service:/app # 掛載，左邊為本機，右邊為 container 內部
+    working_dir: /app/cmd/api
+    command: sh entrypoint.sh # 這是為了要讓程式 hang 住
+
   postgres:
+    container_name: "postgres"
     image: 'postgres:14.0'
     ports:
       - "5432:5432"
@@ -48,3 +62,14 @@ services:
       POSTGRES_DB: users
     volumes: # 將 db-data 裡面的 postgres 的資料，跟容器裡 :後這個路徑理的東西，掛載，就是量子糾纏
       - ./db-data/postgres/:/var/lib/postgresql/data/
+  mongo:
+    container_name: "mongoDB"
+    image: 'mongo:4.2.16-bionic'
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: logs
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - ./db-data/mongo/:/data/db

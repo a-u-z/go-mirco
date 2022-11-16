@@ -26,7 +26,6 @@ func (s *Server) Authenticate(c *gin.Context) {
 	var requestPayload RequestPayload
 
 	json.Unmarshal(jsonData, &requestPayload)
-	log.Printf("here is requestPayload:%+v", requestPayload)
 
 	// 不知道為何這個會失效
 	// if err := c.ShouldBind(&requestPayload); err != nil {
@@ -34,8 +33,6 @@ func (s *Server) Authenticate(c *gin.Context) {
 	// 	log.Printf("here is err:%+v", err)
 	// 	return
 	// }
-
-	log.Printf("here is requestPayload:%+v", requestPayload.Email)
 
 	// validate the user against the database
 	user, err := s.Models.User.GetByEmail(requestPayload.Email)

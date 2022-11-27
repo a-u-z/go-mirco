@@ -39,26 +39,12 @@ func main() {
 		}
 	}()
 
-	// @@@@@@@@@@@@@@
 	s := NewServer()
 	s.Models = New(client)
 
 	s.router.Run(webPort)
-	// @@@@@@@@@@@@@@
 
 }
-
-// func (app *Config) serve() {
-// 	srv := &http.Server{
-// 		Addr: fmt.Sprintf(":%s", webPort),
-// 		Handler: app.routes(),
-// 	}
-
-// 	err := srv.ListenAndServe()
-// 	if err != nil {
-// 		log.Panic()
-// 	}
-// }
 
 func connectToMongo() (*mongo.Client, error) {
 	// create connection options

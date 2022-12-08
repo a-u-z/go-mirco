@@ -40,7 +40,7 @@ func (s *Server) Authenticate(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, errors.New("invalid credentials"))
 		return
 	}
-	log.Printf("here is user:%+v", user)
+
 	valid, err := user.PasswordMatches(requestPayload.Password)
 	if err != nil || !valid {
 		c.JSON(http.StatusBadRequest, errors.New("invalid credentials"))

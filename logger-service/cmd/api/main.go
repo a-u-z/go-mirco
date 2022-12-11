@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net/rpc"
 	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -41,6 +42,9 @@ func main() {
 
 	s := NewServer()
 	s.Models = New(client)
+	// 註冊 rpc
+	err = rpc.Register(new(RPCServer))
+	go s.listenFromRpc()
 
 	s.router.Run(webPort)
 

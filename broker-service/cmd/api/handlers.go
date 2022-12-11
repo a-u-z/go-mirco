@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"net/rpc"
 
 	"github.com/gin-gonic/gin"
 )
@@ -43,6 +44,11 @@ type MailPayload struct {
 	Message string `json:"message"`
 }
 
+type RPCPayload struct {
+	Name string
+	Data string
+}
+
 func (s *Server) HandleSubmission(c *gin.Context) {
 	var requestPayload RequestPayload
 	if err := c.ShouldBind(&requestPayload); err != nil {
@@ -56,7 +62,8 @@ func (s *Server) HandleSubmission(c *gin.Context) {
 		s.authenticate(c, requestPayload.Auth)
 	case "log":
 		// s.logItem(c, requestPayload.Log)
-		s.logEventViaRabbit(c, requestPayload.Log)
+		// s.logEventViaRabbit(c, requestPayload.Log)
+		s.logItemViaRPC(c, requestPayload.Log)
 	case "mail":
 		s.sendMail(c, requestPayload.Mail)
 	default:
@@ -195,7 +202,6 @@ func (s *Server) logEventViaRabbit(c *gin.Context, l LogPayload) {
 	err := s.pushToQueue(l.Name, l.Data)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err)
-
 		return
 	}
 	var payload jsonResponse
@@ -223,4 +229,31 @@ func (s *Server) pushToQueue(name, msg string) error {
 		return err
 	}
 	return nil
+}
+
+func (s *Server) logItemViaRPC(c *gin.Context, l LogPayload) {
+	client, err := rpc.Dial("tcp", "logger-service:5001")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err)
+		return
+	}
+	rpcPayload := RPCPayload(l)
+	// rpcPayload := RPCPayload{
+	// 	Name: l.Name,
+	// 	Data: l.Data,
+	// }
+
+	var result string
+	err = client.Call("RPCServer.LogInfo", rpcPayload, &result)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err)
+		return
+	}
+
+	payload := jsonResponse{
+		Error:   false,
+		Message: result,
+	}
+
+	c.JSON(http.StatusAccepted, payload)
 }

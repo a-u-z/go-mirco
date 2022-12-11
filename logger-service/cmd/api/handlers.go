@@ -1,7 +1,11 @@
 package main
 
 import (
+	"fmt"
+	"log"
+	"net"
 	"net/http"
+	"net/rpc"
 
 	"github.com/gin-gonic/gin"
 )
@@ -38,4 +42,21 @@ func (s *Server) WriteLog(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusAccepted, resp)
+}
+
+func (s *Server) listenFromRpc() error {
+	log.Println("Starting RPC server on port ", rpcPort)
+	listen, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", rpcPort))
+	if err != nil {
+		return err
+	}
+	defer listen.Close()
+
+	for {
+		rpcConn, err := listen.Accept()
+		if err != nil {
+			continue
+		}
+		go rpc.ServeConn(rpcConn)
+	}
 }

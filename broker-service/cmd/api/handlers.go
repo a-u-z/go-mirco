@@ -55,7 +55,8 @@ func (s *Server) HandleSubmission(c *gin.Context) {
 	case "auth":
 		s.authenticate(c, requestPayload.Auth)
 	case "log":
-		s.logItem(c, requestPayload.Log)
+		// s.logItem(c, requestPayload.Log)
+		s.logEventViaRabbit(c, requestPayload.Log)
 	case "mail":
 		s.sendMail(c, requestPayload.Mail)
 	default:
@@ -187,4 +188,39 @@ func (s *Server) authenticate(c *gin.Context, a AuthPayload) {
 
 	c.JSON(http.StatusAccepted, payload)
 
+}
+
+// logEventViaRabbit logs an event using the logger-service. It makes the call by pushing the data to RabbitMQ.
+func (s *Server) logEventViaRabbit(c *gin.Context, l LogPayload) {
+	err := s.pushToQueue(l.Name, l.Data)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err)
+
+		return
+	}
+	var payload jsonResponse
+	payload.Error = false
+	payload.Message = "logged via RabbitMQ"
+
+	c.JSON(http.StatusAccepted, payload)
+}
+
+// pushToQueue pushes a message into RabbitMQ
+func (s *Server) pushToQueue(name, msg string) error {
+	emitter, err := NewEventEmitter(s.Rabbitmq)
+	if err != nil {
+		return err
+	}
+
+	payload := LogPayload{
+		Name: name,
+		Data: msg,
+	}
+
+	j, _ := json.MarshalIndent(&payload, "", "\t")
+	err = emitter.Push(string(j), "log.INFO")
+	if err != nil {
+		return err
+	}
+	return nil
 }

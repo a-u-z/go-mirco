@@ -45,9 +45,9 @@ func main() {
 	// 註冊 rpc
 	err = rpc.Register(new(RPCServer))
 	go s.listenFromRpc()
+	go s.listenFromGRPC()
 
 	s.router.Run(webPort)
-
 }
 
 func connectToMongo() (*mongo.Client, error) {

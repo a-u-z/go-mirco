@@ -1,14 +1,19 @@
 package main
 
 import (
+	"broker/logs"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
 	"net/rpc"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func (s *Server) Broker(c *gin.Context) {
@@ -60,10 +65,15 @@ func (s *Server) HandleSubmission(c *gin.Context) {
 	switch requestPayload.Action {
 	case "auth":
 		s.authenticate(c, requestPayload.Auth)
+
 	case "log":
-		// s.logItem(c, requestPayload.Log)
+		s.logItem(c, requestPayload.Log)
 		// s.logEventViaRabbit(c, requestPayload.Log)
+	case "log via rpc":
 		s.logItemViaRPC(c, requestPayload.Log)
+	case "log via grpc":
+		s.LogViaGRPC(c, requestPayload.Log)
+
 	case "mail":
 		s.sendMail(c, requestPayload.Mail)
 	default:
@@ -256,4 +266,36 @@ func (s *Server) logItemViaRPC(c *gin.Context, l LogPayload) {
 	}
 
 	c.JSON(http.StatusAccepted, payload)
+}
+
+func (s *Server) LogViaGRPC(c *gin.Context, l LogPayload) {
+
+	conn, err := grpc.Dial("logger-service:50001", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err)
+		return
+	}
+	defer conn.Close()
+
+	cc := logs.NewLogServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	_, err = cc.WriteLog(ctx, &logs.LogRequest{
+		LogEntry: &logs.Log{
+			Name: l.Name,
+			Data: l.Data,
+		},
+	})
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err)
+		return
+	}
+
+	var payload jsonResponse
+	payload.Error = false
+	payload.Message = "logged"
+
+	c.JSON(http.StatusAccepted, payload)
+
 }

@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 	"log"
+	"log-service/logs"
 	"net"
 	"net/http"
 	"net/rpc"
 
 	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc"
 )
 
 type JSONPayload struct {
@@ -58,5 +60,22 @@ func (s *Server) listenFromRpc() error {
 			continue
 		}
 		go rpc.ServeConn(rpcConn)
+	}
+}
+
+func (s *Server) listenFromGRPC() {
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", gRpcPort))
+	if err != nil {
+		log.Fatalf("Failed to listen for gRPC: %v", err)
+	}
+
+	ss := grpc.NewServer()
+
+	logs.RegisterLogServiceServer(ss, &LogServer{Models: s.Models})
+
+	log.Printf("gRPC Server started on port %s", gRpcPort)
+
+	if err := ss.Serve(lis); err != nil {
+		log.Fatalf("Failed to listen for gRPC: %v", err)
 	}
 }

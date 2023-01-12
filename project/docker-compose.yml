@@ -15,6 +15,8 @@ services:
     deploy:
       mode: replicated
       replicas: 1
+    environment:
+      ENV_TEST: ${ENV_TEST}
     command: sh entrypoint.sh # 這是為了要讓程式 hang 住
 
   authentication-service:
